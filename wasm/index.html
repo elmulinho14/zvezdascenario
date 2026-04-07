@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Euroleague Scenariji — Crvena zvezda</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --card: #14141f;
+    --border: #2a2a3f;
+    --text: #e0e0e8;
+    --muted: #888899;
+    --red: #c62828;
+    --red-light: #ef5350;
+    --green: #2e7d32;
+    --blue: #1565c0;
+    --gold: #ffd600;
+    --accent: #7c4dff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  .header {
+    background: linear-gradient(135deg, var(--red) 0%, #8b0000 100%);
+    padding: 1.5rem 2rem;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(198, 40, 40, 0.3);
+  }
+  .header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: 1px; }
+  .header p { font-size: 0.9rem; opacity: 0.85; margin-top: 0.3rem; }
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+  @media (max-width: 800px) {
+    .container { grid-template-columns: 1fr; }
+  }
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem;
+  }
+  .panel h2 {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .round-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 1rem;
+    margin-bottom: 0.4rem;
+    letter-spacing: 1px;
+  }
+  .round-label:first-child { margin-top: 0; }
+  .game-row {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0.6rem;
+    border-radius: 8px;
+    margin-bottom: 0.3rem;
+    transition: background 0.15s;
+    gap: 0.5rem;
+  }
+  .game-row:hover { background: rgba(255,255,255,0.04); }
+  .game-row.red-game { border-left: 3px solid var(--red); }
+  .game-row.irrelevant { opacity: 0.35; }
+  .game-teams {
+    flex: 0 0 220px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+  .game-teams .vs { color: var(--muted); font-weight: 400; font-size: 0.8rem; }
+  .h2h-info { font-size: 0.7rem; color: var(--accent); font-weight: 400; margin-top: 0.1rem; }
+  .game-options {
+    flex: 1;
+    display: flex;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+  }
+  .opt-btn {
+    padding: 0.3rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text);
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .opt-btn:hover { border-color: var(--accent); color: #fff; }
+  .opt-btn.selected {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
+  .opt-btn.selected-red {
+    background: var(--red);
+    border-color: var(--red);
+    color: #fff;
+    font-weight: 600;
+  }
+  .game-gc {
+    flex: 0 0 40px;
+    text-align: right;
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+  .btn-clear {
+    padding: 0.2rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 0.7rem;
+    cursor: pointer;
+    flex: 0 0 auto;
+  }
+  .btn-clear:hover { border-color: var(--red-light); color: var(--red-light); }
+  .action-bar {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    justify-content: center;
+  }
+  .btn-simulate {
+    padding: 0.9rem 3rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--red) 0%, #d32f2f 100%);
+    color: #fff;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: transform 0.1s, box-shadow 0.2s;
+    box-shadow: 0 4px 15px rgba(198, 40, 40, 0.4);
+  }
+  .btn-simulate:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(198, 40, 40, 0.5); }
+  .btn-simulate:active { transform: translateY(0); }
+  .btn-simulate:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-reset {
+    padding: 0.7rem 1.5rem;
+    font-size: 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .btn-reset:hover { border-color: var(--text); color: var(--text); }
+  .locked-count {
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .results-panel {
+    grid-column: 1 / -1;
+  }
+  .results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .results-header h2 { border: none; padding: 0; margin: 0; }
+  .results-meta { font-size: 0.8rem; color: var(--muted); }
+  .locked-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 1.2rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .locked-chip {
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .locked-chip.red-chip { background: var(--red); color: #fff; }
+  .locked-chip.other-chip { background: rgba(124, 77, 255, 0.25); color: var(--accent); border: 1px solid var(--accent); }
+  .pos-bar-label { font-size: 1.3rem; font-weight: 800; position: relative; z-index: 1; }
+  .pos-bar-label.top4 { color: var(--gold); }
+  .pos-bar-label.playoff { color: var(--green); }
+  .pos-bar-label.playin { color: var(--blue); }
+  .pos-bar-label.elim-label { color: var(--red-light); font-size: 1rem; }
+  .pos-bar-pct { font-size: 1rem; font-weight: 700; position: relative; z-index: 1; }
+  .pos-bar-count { font-size: 0.65rem; color: var(--muted); position: relative; z-index: 1; }
+  .pos-bar-round { font-size: 0.6rem; color: var(--muted); position: relative; z-index: 1; }
+  .pos-detail {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 0.8rem;
+    background: rgba(255,255,255,0.02);
+  }
+  .detail-section-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 0.3rem;
+  }
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.12rem 0;
+    font-size: 0.82rem;
+  }
+  .detail-row .required { color: var(--green); font-weight: 600; }
+  .detail-row .opp-pct { color: var(--muted); }
+  .detail-row .opp-name { font-weight: 600; }
+  .detail-loser { color: var(--muted); }
+  .pos-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+  }
+  .pos-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.3rem;
+  }
+  .elim-card {
+    background: rgba(198, 40, 40, 0.08);
+    border-color: rgba(198, 40, 40, 0.3);
+  }
+  .pos-grid {
+    display: flex;
+    gap: 0.8rem;
+    flex-wrap: nowrap;
+  }
+  .pos-grid > .pos-card,
+  .pos-grid > .elim-card {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top: 2px solid #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .hidden { display: none !important; }
+  #loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  #loading-overlay .spinner { width: 40px; height: 40px; border-width: 3px; }
+  #loading-overlay p { color: var(--muted); font-size: 0.9rem; }
+</style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <span class="spinner"></span>
+  <p>Učitavanje WASM modula...</p>
+</div>
+
+<div class="header">
+  <h1>★ EUROLEAGUE SCENARIJI — CRVENA ZVEZDA ★</h1>
+  <p>Izaberi ishode meceva i simuliraj sve preostale kombinacije</p>
+</div>
+
+<div class="container">
+  <div class="panel" id="red-games-panel">
+    <h2>🔴 Zvezda</h2>
+    <div id="red-games"></div>
+  </div>
+
+  <div class="panel" id="other-games-panel">
+    <h2>⚽ Ostali mecevi (relevantni)</h2>
+    <div id="other-games"></div>
+  </div>
+
+  <div class="action-bar">
+    <span class="locked-count" id="locked-count">0 meceva zakljucano</span>
+    <label style="color:var(--muted);font-size:0.85rem;display:flex;align-items:center;gap:6px">
+      Prag meceva
+      <input type="number" id="threshold-input" min="50" max="100" value="100" style="width:52px;padding:4px 6px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:6px;text-align:center;font-size:0.9rem">%
+    </label>
+    <button class="btn-simulate" id="btn-simulate" onclick="doSimulate()">SIMULIRAJ</button>
+    <button class="btn-reset" onclick="resetAll()">Resetuj sve</button>
+  </div>
+
+  <div class="results-panel panel hidden" id="results-panel">
+    <div class="results-header">
+      <h2>📊 Rezultati</h2>
+      <div class="results-meta" id="results-meta"></div>
+    </div>
+    <div id="locked-summary" class="locked-summary"></div>
+    <div id="pos-details" class="pos-grid"></div>
+  </div>
+</div>
+
+<script type="module">
+import init, { get_games, simulate } from './pkg/euroleague_wasm.js';
+
+let games = [];
+let locked = {};
+let wasmReady = false;
+
+// Expose to global for onclick handlers
+window.toggleLock = toggleLock;
+window.clearLock = clearLock;
+window.resetAll = resetAll;
+window.doSimulate = doSimulate;
+
+async function start() {
+  await init();
+  wasmReady = true;
+  document.getElementById('loading-overlay').classList.add('hidden');
+  games = get_games();
+  renderGames();
+}
+
+function renderGames() {
+  const redEl = document.getElementById('red-games');
+  const otherEl = document.getElementById('other-games');
+  redEl.innerHTML = '';
+  otherEl.innerHTML = '';
+
+  const rounds = [
+    { label: 'Kolo 36 (gc 351-360)', min: 290, max: 360 },
+    { label: 'Kolo 37 (gc 361-370)', min: 361, max: 370 },
+    { label: 'Kolo 38 (gc 371-380)', min: 371, max: 380 },
+  ];
+
+  const sorted = [...games].sort((a, b) => a.gamecode - b.gamecode);
+
+  for (const round of rounds) {
+    const roundGames = sorted.filter(g => g.gamecode >= round.min && g.gamecode <= round.max);
+    if (roundGames.length === 0) continue;
+
+    const redRoundGames = roundGames.filter(g => g.is_red_game);
+    const otherRoundGames = roundGames.filter(g => !g.is_red_game && g.relevant);
+
+    if (redRoundGames.length > 0) {
+      redEl.innerHTML += `<div class="round-label">${round.label}</div>`;
+      for (const g of redRoundGames) {
+        redEl.innerHTML += gameRowHTML(g, true);
+      }
+    }
+
+    if (otherRoundGames.length > 0) {
+      otherEl.innerHTML += `<div class="round-label">${round.label}</div>`;
+      for (const g of otherRoundGames) {
+        otherEl.innerHTML += gameRowHTML(g, false);
+      }
+    }
+  }
+}
+
+function gameRowHTML(g, isRed) {
+  const cls = isRed ? 'game-row red-game' : (g.relevant ? 'game-row' : 'game-row irrelevant');
+  const selClass = isRed ? 'selected-red' : 'selected';
+  let btns = '';
+  for (let i = 0; i < g.options.length; i++) {
+    const sel = locked[g.index] === i ? selClass : '';
+    btns += `<button class="opt-btn ${sel}" onclick="toggleLock(${g.index}, ${i})">${g.options[i]}</button>`;
+  }
+  const clearBtn = locked[g.index] !== undefined
+    ? `<button class="btn-clear" onclick="clearLock(${g.index})">✕</button>`
+    : '';
+  const h2hInfo = g.h2h_first_game
+    ? `<div class="h2h-info">1. meč: ${g.h2h_first_game}</div>`
+    : '';
+  return `
+    <div class="${cls}" id="game-${g.index}">
+      <div class="game-teams">${g.home} <span class="vs">vs</span> ${g.away}${h2hInfo}</div>
+      <div class="game-options">${btns}</div>
+      ${clearBtn}
+      <div class="game-gc">${g.gamecode}</div>
+    </div>`;
+}
+
+function toggleLock(gi, optIdx) {
+  if (locked[gi] === optIdx) {
+    delete locked[gi];
+  } else {
+    locked[gi] = optIdx;
+  }
+  renderGames();
+  updateCount();
+}
+
+function clearLock(gi) {
+  delete locked[gi];
+  renderGames();
+  updateCount();
+}
+
+function resetAll() {
+  locked = {};
+  renderGames();
+  updateCount();
+  document.getElementById('results-panel').classList.add('hidden');
+}
+
+function updateCount() {
+  const n = Object.keys(locked).length;
+  document.getElementById('locked-count').textContent = `${n} meceva zakljucano`;
+}
+
+function doSimulate() {
+  if (!wasmReady) return;
+  const btn = document.getElementById('btn-simulate');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Racunam...';
+
+  // Use setTimeout to let the UI update before blocking on WASM
+  setTimeout(() => {
+    try {
+      const lockedJson = JSON.stringify({ locked });
+      const data = simulate(lockedJson);
+      renderResults(data);
+    } catch (e) {
+      alert('Greska: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'SIMULIRAJ';
+    }
+  }, 50);
+}
+
+function renderResults(data) {
+  const panel = document.getElementById('results-panel');
+  panel.classList.remove('hidden');
+
+  document.getElementById('results-meta').textContent =
+    `${data.total_scenarios.toLocaleString()} scenarija · ${data.elapsed_ms}ms`;
+
+  const sumEl = document.getElementById('locked-summary');
+  sumEl.innerHTML = '';
+  const sortedLocked = Object.entries(locked).sort((a,b) => {
+    const ga = games[a[0]], gb = games[b[0]];
+    return ga.gamecode - gb.gamecode;
+  });
+  for (const [gi, oi] of sortedLocked) {
+    const g = games[gi];
+    const chipClass = g.is_red_game ? 'locked-chip red-chip' : 'locked-chip other-chip';
+    const optText = g.options[oi];
+    const winner = optText.split(' W')[0];
+    const loser = (winner === g.home) ? g.away : g.home;
+    sumEl.innerHTML += `<span class="${chipClass}">${winner} > ${loser}</span>`;
+  }
+  if (sortedLocked.length === 0) {
+    sumEl.innerHTML = '<span style="color:var(--muted);font-size:0.8rem">Nema zakljucanih meceva — simuliraju se sve kombinacije</span>';
+  }
+
+  const lockedIndices = new Set(Object.keys(locked).map(Number));
+
+  const detailsEl = document.getElementById('pos-details');
+  detailsEl.innerHTML = '';
+
+  const allItems = [...data.positions];
+  if (data.eliminated_pct > 0.01) {
+    allItems.push({ position: 99, pct: data.eliminated_pct, count: data.total_scenarios, round_name: 'Eliminisan', opponents: [], game_results: [] });
+  }
+
+  for (const p of allItems) {
+    const isElim = p.position === 99;
+    const posClass = isElim ? 'elim-label' : (p.position <= 4 ? 'top4' : (p.position <= 6 ? 'playoff' : 'playin'));
+    const label = isElim ? '11+' : `${p.position}.`;
+
+    const threshold = Math.max(50, Math.min(100, parseInt(document.getElementById('threshold-input').value) || 100));
+    const required = isElim ? [] : p.game_results.filter(gr => {
+      if (lockedIndices.has(gr.index)) return false;
+      const winnerPct = Math.max(gr.home_pct, 100 - gr.home_pct);
+      return winnerPct >= threshold;
+    });
+
+    let reqHtml = '';
+    if (required.length > 0) {
+      reqHtml = '<div class="detail-section-title">Mecevi (≥' + threshold + '%)</div>';
+      for (const gr of required) {
+        const winnerPct = gr.home_pct >= (100 - gr.home_pct) ? gr.home_pct : (100 - gr.home_pct);
+        const winner = gr.home_pct >= 50 ? gr.home : gr.away;
+        const loser = winner === gr.home ? gr.away : gr.home;
+        const pctLabel = winnerPct >= 99.9 ? '' : ` (${winnerPct.toFixed(1)}%)`;
+        reqHtml += `<div class="detail-row"><span class="required">✓ ${winner}</span><span class="detail-loser">> ${loser}${pctLabel}</span></div>`;
+      }
+    }
+
+    let oppHtml = '';
+    if (!isElim && p.opponents.length > 0) {
+      oppHtml = '<div class="detail-section-title">Protivnik</div>';
+      for (const o of p.opponents) {
+        oppHtml += `<div class="detail-row"><span class="opp-name">${o.team}</span><span class="opp-pct">${o.pct.toFixed(1)}%</span></div>`;
+      }
+    }
+
+    const cardClass = isElim ? 'pos-card elim-card' : 'pos-card';
+    detailsEl.innerHTML += `
+      <div class="${cardClass}">
+        <div class="pos-card-header">
+          <div class="pos-bar-label ${posClass}" style="font-size:1.5rem">${label}</div>
+          <div style="text-align:right">
+            <div class="pos-bar-pct">${p.pct.toFixed(1)}%</div>
+            <div class="pos-bar-count">${p.count.toLocaleString()} scenarija</div>
+          </div>
+        </div>
+        <div class="pos-bar-round">${p.round_name}</div>
+        ${reqHtml}
+        ${oppHtml}
+      </div>`;
+  }
+
+  panel.scrollIntoView({ behavior: 'smooth' });
+}
+
+start();
+</script>
+</body>
+</html>
