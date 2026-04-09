@@ -66,7 +66,7 @@ pub const RELEVANT_TEAMS: [Team; 13] = [
 ];
 
 // ============================================================================
-// DATA: Current standings (after R36 + IST-PAR postponed; HTA 35gp, TEL 35gp)
+// DATA: Current standings (after R37; TEL 36gp, all others 36-37gp)
 // ============================================================================
 
 #[derive(Debug, Clone)]
@@ -82,22 +82,22 @@ pub struct TeamStats {
 
 pub fn base_standings() -> Vec<TeamStats> {
     vec![
-        TeamStats { team: Team::OLY, gp: 36, wins: 24, losses: 12, pf_reg: 3232, pa_reg: 2983, diff_reg: 249 },
-        TeamStats { team: Team::ULK, gp: 36, wins: 23, losses: 13, pf_reg: 2964, pa_reg: 2911, diff_reg: 53 },
-        TeamStats { team: Team::MAD, gp: 36, wins: 22, losses: 14, pf_reg: 3165, pa_reg: 3005, diff_reg: 160 },
-        TeamStats { team: Team::PAM, gp: 36, wins: 23, losses: 13, pf_reg: 3221, pa_reg: 3074, diff_reg: 147 },
+        TeamStats { team: Team::OLY, gp: 37, wins: 25, losses: 12, pf_reg: 3321, pa_reg: 3068, diff_reg: 253 },
+        TeamStats { team: Team::ULK, gp: 37, wins: 23, losses: 14, pf_reg: 3033, pa_reg: 2985, diff_reg: 48 },
+        TeamStats { team: Team::MAD, gp: 37, wins: 23, losses: 14, pf_reg: 3239, pa_reg: 3074, diff_reg: 165 },
+        TeamStats { team: Team::PAM, gp: 37, wins: 24, losses: 13, pf_reg: 3323, pa_reg: 3158, diff_reg: 165 },
         TeamStats { team: Team::ZAL, gp: 36, wins: 21, losses: 15, pf_reg: 3136, pa_reg: 2972, diff_reg: 164 },
-        TeamStats { team: Team::HTA, gp: 35, wins: 22, losses: 13, pf_reg: 3060, pa_reg: 2929, diff_reg: 131 },
-        TeamStats { team: Team::PAN, gp: 36, wins: 21, losses: 15, pf_reg: 3133, pa_reg: 3064, diff_reg: 69 },
+        TeamStats { team: Team::HTA, gp: 36, wins: 22, losses: 14, pf_reg: 3145, pa_reg: 3018, diff_reg: 127 },
+        TeamStats { team: Team::PAN, gp: 37, wins: 21, losses: 16, pf_reg: 3217, pa_reg: 3166, diff_reg: 51 },
         TeamStats { team: Team::BAR, gp: 36, wins: 20, losses: 16, pf_reg: 2986, pa_reg: 2985, diff_reg: 1 },
         TeamStats { team: Team::MCO, gp: 36, wins: 20, losses: 16, pf_reg: 3219, pa_reg: 3111, diff_reg: 108 },
         TeamStats { team: Team::RED, gp: 36, wins: 20, losses: 16, pf_reg: 3099, pa_reg: 3049, diff_reg: 50 },
         TeamStats { team: Team::DUB, gp: 36, wins: 19, losses: 17, pf_reg: 3170, pa_reg: 3145, diff_reg: 25 },
-        TeamStats { team: Team::TEL, gp: 35, wins: 18, losses: 17, pf_reg: 3133, pa_reg: 3185, diff_reg: -52 },
-        TeamStats { team: Team::MIL, gp: 36, wins: 17, losses: 19, pf_reg: 3086, pa_reg: 3115, diff_reg: -29 },
-        TeamStats { team: Team::MUN, gp: 36, wins: 16, losses: 20, pf_reg: 2900, pa_reg: 2989, diff_reg: -89 },
+        TeamStats { team: Team::TEL, gp: 36, wins: 18, losses: 18, pf_reg: 3213, pa_reg: 3298, diff_reg: -85 },
+        TeamStats { team: Team::MIL, gp: 37, wins: 17, losses: 20, pf_reg: 3170, pa_reg: 3209, diff_reg: -39 },
+        TeamStats { team: Team::MUN, gp: 37, wins: 17, losses: 20, pf_reg: 2994, pa_reg: 3073, diff_reg: -79 },
         TeamStats { team: Team::PAR, gp: 36, wins: 15, losses: 21, pf_reg: 2887, pa_reg: 3080, diff_reg: -193 },
-        TeamStats { team: Team::PRS, gp: 36, wins: 14, losses: 22, pf_reg: 3230, pa_reg: 3291, diff_reg: -61 },
+        TeamStats { team: Team::PRS, gp: 37, wins: 15, losses: 22, pf_reg: 3343, pa_reg: 3371, diff_reg: -28 },
         TeamStats { team: Team::VIR, gp: 36, wins: 13, losses: 23, pf_reg: 2949, pa_reg: 3118, diff_reg: -169 },
         TeamStats { team: Team::BAS, gp: 36, wins: 12, losses: 24, pf_reg: 3160, pa_reg: 3320, diff_reg: -160 },
         TeamStats { team: Team::IST, gp: 36, wins: 11, losses: 25, pf_reg: 2844, pa_reg: 2985, diff_reg: -141 },
@@ -153,7 +153,7 @@ pub fn base_h2h() -> HashMap<(Team, Team), H2HRecord> {
         (Team::HTA, Team::MAD, 2, 0, 2, -10, 10, true),
         (Team::HTA, Team::MCO, 1, 1, 0, 8, -8, false),
         (Team::HTA, Team::MIL, 2, 2, 0, 28, -28, true),
-        (Team::HTA, Team::OLY, 1, 0, 1, -4, 4, false),
+        (Team::HTA, Team::OLY, 2, 0, 2, -8, 8, true),
         (Team::HTA, Team::PAM, 2, 1, 1, 7, -7, true),
         (Team::HTA, Team::PAN, 2, 1, 1, -7, 7, true),
         (Team::HTA, Team::RED, 2, 1, 1, -6, 6, true),
@@ -167,7 +167,7 @@ pub fn base_h2h() -> HashMap<(Team, Team), H2HRecord> {
         (Team::MAD, Team::PAN, 2, 0, 2, -11, 11, true),
         (Team::MAD, Team::RED, 1, 0, 1, -15, 15, false),
         (Team::MAD, Team::TEL, 2, 1, 1, 11, -11, true),
-        (Team::MAD, Team::ULK, 1, 1, 0, 26, -26, false),
+        (Team::MAD, Team::ULK, 2, 2, 0, 31, -31, true),
         (Team::MAD, Team::ZAL, 2, 1, 1, -1, 1, true),
         (Team::MCO, Team::MIL, 2, 2, 0, 8, -8, true),
         (Team::MCO, Team::OLY, 2, 2, 0, 6, -6, true),
@@ -190,7 +190,7 @@ pub fn base_h2h() -> HashMap<(Team, Team), H2HRecord> {
         (Team::OLY, Team::TEL, 2, 2, 0, 8, -8, true),
         (Team::OLY, Team::ULK, 2, 1, 1, 9, -9, true),
         (Team::OLY, Team::ZAL, 2, 1, 1, 17, -17, true),
-        (Team::PAM, Team::PAN, 1, 1, 0, 10, -10, false),
+        (Team::PAM, Team::PAN, 2, 2, 0, 28, -28, true),
         (Team::PAM, Team::RED, 2, 2, 0, 20, -20, true),
         (Team::PAM, Team::TEL, 2, 1, 1, 8, -8, true),
         (Team::PAM, Team::ULK, 2, 1, 1, 12, -12, true),
@@ -244,15 +244,7 @@ pub struct RemainingGame {
 
 pub fn remaining_games() -> Vec<RemainingGame> {
     vec![
-        // Round 37
-        RemainingGame { home: Team::MIL, away: Team::MUN, gamecode: 361, h2h_info: None },
-        RemainingGame { home: Team::ULK, away: Team::MAD, gamecode: 362,
-            h2h_info: Some(H2HIncompleteInfo { first_winner: Team::MAD, first_loser: Team::ULK, margin: 26 }) },
-        RemainingGame { home: Team::HTA, away: Team::OLY, gamecode: 363,
-            h2h_info: Some(H2HIncompleteInfo { first_winner: Team::OLY, first_loser: Team::HTA, margin: 4 }) },
-        RemainingGame { home: Team::PRS, away: Team::TEL, gamecode: 364, h2h_info: None },
-        RemainingGame { home: Team::PAM, away: Team::PAN, gamecode: 365,
-            h2h_info: Some(H2HIncompleteInfo { first_winner: Team::PAM, first_loser: Team::PAN, margin: 10 }) },
+        // Round 37 (remaining: MCO-BAR, DUB-IST, ASV-RED, PAR-ZAL)
         RemainingGame { home: Team::MCO, away: Team::BAR, gamecode: 366,
             h2h_info: Some(H2HIncompleteInfo { first_winner: Team::MCO, first_loser: Team::BAR, margin: 16 }) },
         RemainingGame { home: Team::DUB, away: Team::IST, gamecode: 367, h2h_info: None },
