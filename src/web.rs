@@ -150,7 +150,22 @@ async fn games_handler() -> Json<Vec<GameInfo>> {
 
     let result: Vec<GameInfo> = games.iter().enumerate().map(|(i, g)| {
         let is_red = g.home == Team::RED || g.away == Team::RED;
-        let opts = build_game_options(g);
+
+        // Check if H2H detail matters (can these 2 teams finish with same wins?)
+        let h2h_dominated = g.h2h_info.is_some() && {
+            let sh = base.iter().find(|s| s.team == g.home).unwrap();
+            let sa = base.iter().find(|s| s.team == g.away).unwrap();
+            let rh = team_remaining.get(&g.home).copied().unwrap_or(0);
+            let ra = team_remaining.get(&g.away).copied().unwrap_or(0);
+            sh.wins + rh < sa.wins || sa.wins + ra < sh.wins
+        };
+
+        let opt_labels: Vec<String> = if h2h_dominated {
+            vec![format!("{} W", g.home.name()), format!("{} W", g.away.name())]
+        } else {
+            let opts = build_game_options(g);
+            (0..opts.len()).map(|j| describe_option(g, j)).collect()
+        };
 
         // A game is relevant if at least one team could potentially tie RED at any RED win count
         let home_relevant = RELEVANT_TEAMS.contains(&g.home) && {
@@ -165,9 +180,11 @@ async fn games_handler() -> Json<Vec<GameInfo>> {
             s.wins + rem >= 20 && s.wins <= red_max_wins
         };
 
-        let h2h_first_game = g.h2h_info.as_ref().map(|info| {
-            format!("{} W +{} vs {}", info.first_winner.name(), info.margin, info.first_loser.name())
-        });
+        let h2h_first_game = if h2h_dominated { None } else {
+            g.h2h_info.as_ref().map(|info| {
+                format!("{} W +{} vs {}", info.first_winner.name(), info.margin, info.first_loser.name())
+            })
+        };
 
         GameInfo {
             index: i,
@@ -175,7 +192,7 @@ async fn games_handler() -> Json<Vec<GameInfo>> {
             away: g.away.name().to_string(),
             gamecode: g.gamecode,
             is_red_game: is_red,
-            options: (0..opts.len()).map(|j| describe_option(g, j)).collect(),
+            options: opt_labels,
             relevant: is_red || home_relevant || away_relevant,
             h2h_first_game,
         }
@@ -191,8 +208,30 @@ async fn simulate_handler(Json(req): Json<SimulateRequest>) -> Json<SimulateResp
     let games = remaining_games();
     let n_all_games = games.len();
 
-    // Build outcome options for each game
-    let all_options: Vec<Vec<GameOutcome>> = games.iter().map(|g| build_game_options(g)).collect();
+    // Precompute H2H simplification: if two teams can't finish with same wins,
+    // their H2H tiebreaker detail is irrelevant — reduce to 2 options
+    let mut total_remaining: HashMap<Team, u32> = HashMap::new();
+    for g in &games {
+        *total_remaining.entry(g.home).or_insert(0) += 1;
+        *total_remaining.entry(g.away).or_insert(0) += 1;
+    }
+    let h2h_simplified: Vec<bool> = games.iter().map(|g| {
+        if g.h2h_info.is_none() { return false; }
+        let sh = base.iter().find(|s| s.team == g.home).unwrap();
+        let sa = base.iter().find(|s| s.team == g.away).unwrap();
+        let rh = total_remaining.get(&g.home).copied().unwrap_or(0);
+        let ra = total_remaining.get(&g.away).copied().unwrap_or(0);
+        sh.wins + rh < sa.wins || sa.wins + ra < sh.wins
+    }).collect();
+
+    // Build outcome options for each game (simplified where H2H can't matter)
+    let all_options: Vec<Vec<GameOutcome>> = games.iter().enumerate().map(|(i, g)| {
+        if h2h_simplified[i] {
+            vec![GameOutcome::HomeWin, GameOutcome::AwayWin]
+        } else {
+            build_game_options(g)
+        }
+    }).collect();
 
     // Separate locked vs free games
     let mut fixed_outcomes: Vec<(usize, GameOutcome)> = Vec::new();
@@ -307,7 +346,13 @@ async fn simulate_handler(Json(req): Json<SimulateRequest>) -> Json<SimulateResp
 
     // Precompute weights for critical games
     let game_weights: Vec<Vec<f64>> = critical_free.iter()
-        .map(|&gi| outcome_weights(&games[gi]))
+        .map(|&gi| {
+            if h2h_simplified[gi] {
+                vec![0.5, 0.5]
+            } else {
+                outcome_weights(&games[gi])
+            }
+        })
         .collect();
 
     let radixes: Vec<usize> = game_options.iter().map(|(_, opts)| opts.len()).collect();
@@ -543,8 +588,13 @@ async fn simulate_handler(Json(req): Json<SimulateRequest>) -> Json<SimulateResp
         let mut options = Vec::new();
         for oi in 0..opts_count {
             let exp = if iw[ci][oi] > 0.0 { ip[ci][oi] / iw[ci][oi] } else { 0.0 };
+            let label = if h2h_simplified[gi] {
+                match oi { 0 => format!("{} W", g.home.name()), _ => format!("{} W", g.away.name()) }
+            } else {
+                describe_option(g, oi)
+            };
             options.push(OptionImpact {
-                label: describe_option(g, oi),
+                label,
                 expected_pos: exp,
                 delta: exp - expected_position,
             });
