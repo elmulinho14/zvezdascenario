@@ -61,12 +61,29 @@ struct GameResultInfo {
 }
 
 #[derive(Serialize)]
+struct GameImpact {
+    index: usize,
+    home: String,
+    away: String,
+    options: Vec<OptionImpact>,
+}
+
+#[derive(Serialize)]
+struct OptionImpact {
+    label: String,
+    expected_pos: f64,
+    delta: f64,
+}
+
+#[derive(Serialize)]
 struct SimulateResponse {
     total_scenarios: u64,
     elapsed_ms: u64,
     positions: Vec<PositionResult>,
     eliminated_count: u64,
     eliminated_pct: f64,
+    expected_position: f64,
+    game_impacts: Vec<GameImpact>,
 }
 
 // ============================================================================
@@ -311,6 +328,12 @@ async fn simulate_handler(Json(req): Json<SimulateRequest>) -> Json<SimulateResp
     let accum: Mutex<BTreeMap<u32, PosAccum>> = Mutex::new(BTreeMap::new());
     let eliminated: Mutex<f64> = Mutex::new(0.0);
 
+    // Impact accumulators: per critical game, per option -> (weighted_pos_sum, weight_sum)
+    let impact_pos: Mutex<Vec<Vec<f64>>> = Mutex::new(radixes.iter().map(|&r| vec![0.0; r]).collect());
+    let impact_wt: Mutex<Vec<Vec<f64>>> = Mutex::new(radixes.iter().map(|&r| vec![0.0; r]).collect());
+    let overall_pos: Mutex<f64> = Mutex::new(0.0);
+    let overall_wt: Mutex<f64> = Mutex::new(0.0);
+
     let chunk_size: u64 = if actual_combos > 100_000 { 10_000 } else { 1 };
     let n_chunks = (actual_combos + chunk_size - 1) / chunk_size;
 
@@ -320,6 +343,10 @@ async fn simulate_handler(Json(req): Json<SimulateRequest>) -> Json<SimulateResp
 
         let mut local_pos: BTreeMap<u32, (f64, BTreeMap<Team, f64>, Vec<f64>, Vec<f64>)> = BTreeMap::new();
         let mut local_eliminated: f64 = 0.0;
+        let mut local_impact_pos: Vec<Vec<f64>> = radixes.iter().map(|&r| vec![0.0; r]).collect();
+        let mut local_impact_wt: Vec<Vec<f64>> = radixes.iter().map(|&r| vec![0.0; r]).collect();
+        let mut local_overall_pos: f64 = 0.0;
+        let mut local_overall_wt: f64 = 0.0;
 
         for combo_num in start_c..end_c {
             let mut choices = vec![0usize; n_crit];
@@ -343,6 +370,19 @@ async fn simulate_handler(Json(req): Json<SimulateRequest>) -> Json<SimulateResp
             }
 
             let result = run_scenario(&outcomes, &games, &base, &h2h);
+
+            // Accumulate expected position for impact analysis (ALL scenarios)
+            let effective_pos: f64 = if result.has_unresolved_red || result.red_min != result.red_max {
+                (result.red_min as f64 + result.red_max as f64) / 2.0
+            } else {
+                result.red_min as f64
+            };
+            local_overall_pos += weight * effective_pos;
+            local_overall_wt += weight;
+            for i in 0..n_crit {
+                local_impact_pos[i][choices[i]] += weight * effective_pos;
+                local_impact_wt[i][choices[i]] += weight;
+            }
 
             if result.has_unresolved_red || result.red_min != result.red_max {
                 local_eliminated += weight;
@@ -405,6 +445,18 @@ async fn simulate_handler(Json(req): Json<SimulateRequest>) -> Json<SimulateResp
         }
         {
             *eliminated.lock().unwrap() += local_eliminated;
+        }
+        {
+            *overall_pos.lock().unwrap() += local_overall_pos;
+            *overall_wt.lock().unwrap() += local_overall_wt;
+            let mut ip = impact_pos.lock().unwrap();
+            let mut iw = impact_wt.lock().unwrap();
+            for i in 0..n_crit {
+                for j in 0..radixes[i] {
+                    ip[i][j] += local_impact_pos[i][j];
+                    iw[i][j] += local_impact_wt[i][j];
+                }
+            }
         }
     });
 
@@ -478,14 +530,43 @@ async fn simulate_handler(Json(req): Json<SimulateRequest>) -> Json<SimulateResp
         });
     }
 
+    // Build game impacts
+    let ip = impact_pos.lock().unwrap();
+    let iw = impact_wt.lock().unwrap();
+    let ow = *overall_wt.lock().unwrap();
+    let expected_position = if ow > 0.0 { *overall_pos.lock().unwrap() / ow } else { 0.0 };
+
+    let mut game_impacts = Vec::new();
+    for (ci, &(gi, ref _opts)) in game_options.iter().enumerate() {
+        let g = &games[gi];
+        let opts_count = radixes[ci];
+        let mut options = Vec::new();
+        for oi in 0..opts_count {
+            let exp = if iw[ci][oi] > 0.0 { ip[ci][oi] / iw[ci][oi] } else { 0.0 };
+            options.push(OptionImpact {
+                label: describe_option(g, oi),
+                expected_pos: exp,
+                delta: exp - expected_position,
+            });
+        }
+        game_impacts.push(GameImpact {
+            index: gi,
+            home: g.home.name().to_string(),
+            away: g.away.name().to_string(),
+            options,
+        });
+    }
+
     let elapsed = start.elapsed();
 
     Json(SimulateResponse {
         total_scenarios: actual_combos,
         elapsed_ms: elapsed.as_millis() as u64,
         positions,
-        eliminated_count: actual_combos,  // pass combos; frontend uses eliminated_pct for display
+        eliminated_count: actual_combos,
         eliminated_pct: elim / total_weight * 100.0,
+        expected_position,
+        game_impacts,
     })
 }
 

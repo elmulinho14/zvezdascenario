@@ -50,12 +50,29 @@ struct GameResultInfo {
 }
 
 #[derive(Serialize)]
+struct GameImpact {
+    index: usize,
+    home: String,
+    away: String,
+    options: Vec<OptionImpact>,
+}
+
+#[derive(Serialize)]
+struct OptionImpact {
+    label: String,
+    expected_pos: f64,
+    delta: f64,
+}
+
+#[derive(Serialize)]
 struct SimulateResponse {
     total_scenarios: u64,
     elapsed_ms: u64,
     positions: Vec<PositionResult>,
     eliminated_count: u64,
     eliminated_pct: f64,
+    expected_position: f64,
+    game_impacts: Vec<GameImpact>,
 }
 
 // ============================================================================
@@ -276,6 +293,10 @@ pub fn simulate(locked_json: &str) -> JsValue {
     // Single-threaded enumeration (no rayon in WASM)
     let mut pos_data: BTreeMap<u32, (f64, BTreeMap<Team, f64>, Vec<f64>, Vec<f64>)> = BTreeMap::new();
     let mut eliminated: f64 = 0.0;
+    let mut impact_pos: Vec<Vec<f64>> = radixes.iter().map(|&r| vec![0.0; r]).collect();
+    let mut impact_wt: Vec<Vec<f64>> = radixes.iter().map(|&r| vec![0.0; r]).collect();
+    let mut overall_pos_sum: f64 = 0.0;
+    let mut overall_wt_sum: f64 = 0.0;
 
     for combo_num in 0..actual_combos {
         let mut choices = vec![0usize; n_crit];
@@ -298,6 +319,19 @@ pub fn simulate(locked_json: &str) -> JsValue {
         }
 
         let result = run_scenario(&outcomes, &games, &base, &h2h);
+
+        // Accumulate expected position for impact analysis (ALL scenarios)
+        let effective_pos: f64 = if result.has_unresolved_red || result.red_min != result.red_max {
+            (result.red_min as f64 + result.red_max as f64) / 2.0
+        } else {
+            result.red_min as f64
+        };
+        overall_pos_sum += weight * effective_pos;
+        overall_wt_sum += weight;
+        for i in 0..n_crit {
+            impact_pos[i][choices[i]] += weight * effective_pos;
+            impact_wt[i][choices[i]] += weight;
+        }
 
         if result.has_unresolved_red || result.red_min != result.red_max {
             eliminated += weight;
@@ -401,6 +435,29 @@ pub fn simulate(locked_json: &str) -> JsValue {
         });
     }
 
+    let expected_position = if overall_wt_sum > 0.0 { overall_pos_sum / overall_wt_sum } else { 0.0 };
+
+    let mut game_impacts = Vec::new();
+    for (ci, &(gi, ref _opts)) in game_options.iter().enumerate() {
+        let g = &games[gi];
+        let opts_count = radixes[ci];
+        let mut options = Vec::new();
+        for oi in 0..opts_count {
+            let exp = if impact_wt[ci][oi] > 0.0 { impact_pos[ci][oi] / impact_wt[ci][oi] } else { 0.0 };
+            options.push(OptionImpact {
+                label: describe_option(g, oi),
+                expected_pos: exp,
+                delta: exp - expected_position,
+            });
+        }
+        game_impacts.push(GameImpact {
+            index: gi,
+            home: g.home.name().to_string(),
+            away: g.away.name().to_string(),
+            options,
+        });
+    }
+
     let elapsed_ms = (js_sys_now() - start) as u64;
 
     let response = SimulateResponse {
@@ -409,6 +466,8 @@ pub fn simulate(locked_json: &str) -> JsValue {
         positions,
         eliminated_count: actual_combos,
         eliminated_pct: eliminated / total_weight * 100.0,
+        expected_position,
+        game_impacts,
     };
 
     serde_wasm_bindgen::to_value(&response).unwrap()

@@ -323,6 +323,16 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
   .hidden { display: none !important; }
+  .impact-delta {
+    font-size: 0.65rem;
+    font-weight: 700;
+    margin-left: 3px;
+    vertical-align: super;
+  }
+  .impact-delta.good { color: #4caf50; }
+  .impact-delta.bad { color: #ef5350; }
+  .impact-delta.neutral { color: var(--muted); }
+  .expected-pos { color: var(--gold); font-weight: 700; }
 </style>
 </head>
 <body>
@@ -366,6 +376,7 @@
 <script>
 let games = [];
 let locked = {}; // gameIndex -> optionIndex
+let lastImpacts = null; // game_impacts from last simulation
 
 async function init() {
   const res = await fetch('/api/games');
@@ -418,7 +429,17 @@ function gameRowHTML(g, isRed) {
   let btns = '';
   for (let i = 0; i < g.options.length; i++) {
     const sel = locked[g.index] === i ? selClass : '';
-    btns += `<button class="opt-btn ${sel}" onclick="toggleLock(${g.index}, ${i})">${g.options[i]}</button>`;
+    let deltaHtml = '';
+    if (lastImpacts && locked[g.index] === undefined) {
+      const imp = lastImpacts.find(im => im.index === g.index);
+      if (imp && imp.options[i]) {
+        const d = imp.options[i].delta;
+        const cls = d < -0.01 ? 'good' : d > 0.01 ? 'bad' : 'neutral';
+        const sign = d > 0 ? '+' : '';
+        deltaHtml = `<span class="impact-delta ${cls}">${sign}${d.toFixed(2)}</span>`;
+      }
+    }
+    btns += `<button class="opt-btn ${sel}" onclick="toggleLock(${g.index}, ${i})">${g.options[i]}${deltaHtml}</button>`;
   }
   const clearBtn = locked[g.index] !== undefined
     ? `<button class="btn-clear" onclick="clearLock(${g.index})">✕</button>`
@@ -453,6 +474,7 @@ function clearLock(gi) {
 
 function resetAll() {
   locked = {};
+  lastImpacts = null;
   renderGames();
   updateCount();
   document.getElementById('results-panel').classList.add('hidden');
@@ -475,6 +497,8 @@ async function simulate() {
       body: JSON.stringify({ locked }),
     });
     const data = await res.json();
+    lastImpacts = data.game_impacts || null;
+    renderGames();
     renderResults(data);
   } catch (e) {
     alert('Greska: ' + e.message);
@@ -489,7 +513,7 @@ function renderResults(data) {
   panel.classList.remove('hidden');
 
   document.getElementById('results-meta').textContent =
-    `${data.total_scenarios.toLocaleString()} scenarija · ${data.elapsed_ms}ms`;
+    `${data.total_scenarios.toLocaleString()} scenarija · ${data.elapsed_ms}ms · E[poz] = ${data.expected_position.toFixed(2)}`;
 
   // 1. Locked selections summary — show winner > loser
   const sumEl = document.getElementById('locked-summary');
