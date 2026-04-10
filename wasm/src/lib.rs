@@ -124,7 +124,7 @@ pub fn get_games() -> JsValue {
     let games = remaining_games();
     let base = base_standings();
 
-    let red_max_wins = 20 + 2;
+    let red_max_wins = 21 + 1;
 
     let mut team_remaining: HashMap<Team, u32> = HashMap::new();
     for g in &games {
@@ -237,7 +237,7 @@ pub fn simulate(locked_json: &str) -> JsValue {
         .map(|(i, _)| i)
         .collect();
 
-    let red_base_wins = 20u32;
+    let red_base_wins = 21u32;
     let mut red_min_wins = red_base_wins;
     let mut red_max_wins = red_base_wins;
 

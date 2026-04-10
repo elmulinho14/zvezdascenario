@@ -139,7 +139,7 @@ async fn games_handler() -> Json<Vec<GameInfo>> {
     let base = base_standings();
 
     // Compute max possible RED wins (all 2 games won)
-    let red_max_wins = 20 + 2; // RED currently has 20W, 2 remaining games
+    let red_max_wins = 21 + 1; // RED currently has 21W, 1 remaining game
 
     let mut team_remaining: HashMap<Team, u32> = HashMap::new();
     for g in &games {
@@ -260,7 +260,7 @@ async fn simulate_handler(Json(req): Json<SimulateRequest>) -> Json<SimulateResp
     let all_red_locked = red_game_indices.iter().all(|i| req.locked.contains_key(i));
 
     // Compute RED's possible win range
-    let red_base_wins = 20u32;
+    let red_base_wins = 21u32;
     let mut red_min_wins = red_base_wins;
     let mut red_max_wins = red_base_wins;
 
